@@ -1,0 +1,35 @@
+# node / frontend
+frontend/node_modules
+frontend/dist
+
+# python / backend
+backend/.venv
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.ruff_cache
+backend/.mypy_cache
+backend/data/uploads
+backend/data/work
+backend/caselens.db
+backend/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python venv
+venv/
+*.pyc
+__pycache__/
+
+# Node
+node_modules/
+dist/
+
+# Environment files
+.env
+.env.local
+
+# System
+.DS_Store
+Thumbs.db
