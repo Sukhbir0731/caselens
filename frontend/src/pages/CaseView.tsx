@@ -29,7 +29,7 @@ export default function CaseView() {
           </button>
         </div>
       </header>
-      <SummaryPanel summary={caseSummaryRaw} />
+      <SummaryPanel summary={caseSummaryRaw || 'Summarization in progress…'} />
       <section>
         <h2 className="text-lg font-semibold">Timeline</h2>
         <Timeline docs={docs} highlights={highlightsRaw} />

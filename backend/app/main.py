@@ -4,7 +4,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import SQLModel, Session, create_engine, select
-
+from fastapi import BackgroundTasks
 from .models import Case, Doc
 from .ocr import extract_text_from_pdf
 from .dedupe import DeDupeIndex
@@ -57,7 +57,11 @@ def health():
 
 
 @app.post("/upload")
-async def upload(case_name: str = Form(...), files: list[UploadFile] = File(...)):
+async def upload(
+    background_tasks: BackgroundTasks,
+    case_name: str = Form(...), 
+    files: list[UploadFile] = File(...)
+):
     """
     Accept only real PDFs. Skip non-PDFs and any file that fails to open.
     On success, return { case_id } so the frontend can navigate to /case/{id}.
@@ -68,8 +72,8 @@ async def upload(case_name: str = Form(...), files: list[UploadFile] = File(...)
         s.add(c)
         s.commit()
         s.refresh(c)
-
         case_id = c.id
+
         ix = DeDupeIndex()
         case_dir = UPLOADS / f"case_{case_id}_{case_slug}"
         case_dir.mkdir(parents=True, exist_ok=True)
@@ -117,9 +121,8 @@ async def upload(case_name: str = Form(...), files: list[UploadFile] = File(...)
                 date_str=guess_date(text),
             )
             s.add(d)
-
         s.commit()
-    _ensure_ai_cache(case_id)   # <- call LLM + write caches here (sync)
+    background_tasks.add_task(_ensure_ai_cache, case_id)
     return JSONResponse({"case_id": case_id}, status_code=201, headers={"Location": f"/api/case/{case_id}"})
 
 def _ensure_ai_cache(case_id: int) -> None:
@@ -159,7 +162,7 @@ def api_case(case_id: int):
     with Session(engine) as s:
         c = s.get(Case, case_id)
         if not c:
-            raise HTTPException(404, "Not found")
+            raise HTTPException(status_code=404, detail="Case not found")
         docs = s.exec(select(Doc).where(Doc.case_id == case_id)).all()
 
     def sort_key(x):  # type: ignore
