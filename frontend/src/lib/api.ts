@@ -38,6 +38,16 @@ export async function getCaseView(caseId: number) {
   };
 }
 
+export async function listCasesJSON() {
+  const res = await api.get('/api/cases');
+  return res.data as {
+    id: number;
+    name: string;
+    created_at: string;
+    doc_count: number;
+  }[];
+}
+
 export async function getCase(id: number) {
   return {
     meta: { id, name: 'Demo Case', created_at: '2025-09-04' },

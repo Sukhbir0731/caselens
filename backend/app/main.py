@@ -179,7 +179,7 @@ def api_case(case_id: int):
                 raw = json.loads(cache.read_text()).get("raw", "")
             except Exception:
                 raw = cache.read_text()
-            highlights[d.id] = raw
+            highlights[d.id] = raw if raw else ""
 
     case_summary_raw = ""
     case_cache = hl_dir / "case_summary.json"
@@ -198,6 +198,21 @@ def api_case(case_id: int):
         highlightsRaw=highlights,
         caseSummaryRaw=case_summary_raw,
     )
+
+@app.get("/api/cases")
+def list_cases():
+    with Session(engine) as s:
+        cases = s.exec(select(Case)).all()
+
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "created_at": c.created_at.isoformat(),
+            "doc_count": len(c.docs),
+        }
+        for c in cases
+    ]
 
 @app.get("/export/{case_id}.json")
 def export_json(case_id: int):
