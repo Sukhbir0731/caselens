@@ -6,15 +6,22 @@ import { useUploadCase } from '@/hooks/useCase';
 export default function Home() {
   const [name, setName] = React.useState('Demo Case');
   const [files, setFiles] = React.useState<File[]>([]);
+  const [status, setStatus] = React.useState<Record<string, string>>({});
   const nav = useNavigate();
   const upload = useUploadCase();
 
   async function onUpload() {
     if (!name || files.length === 0) return;
-    const loc = await upload.mutateAsync({ name, files });
-    // FastAPI redirects to /case/{id}. Parse id and navigate to our SPA route.
-    if (loc) {
-      nav(`/case/${loc}`);
+
+    setStatus(Object.fromEntries(files.map((f) => [f.name, '⏳ Processing...'])));
+    try {
+      const loc = await upload.mutateAsync({ name, files });
+      if (loc) {
+        setStatus((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, '✅ Processed'])));
+        nav(`/case/${loc}`);
+      }
+    } catch {
+      setStatus((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, '❌ Failed'])));
     }
   }
 
@@ -29,10 +36,18 @@ export default function Home() {
           placeholder="e.g., Doe v. ACME"
         />
         <div className="mt-4">
-          <FileDropZone onFiles={setFiles} />
+          <FileDropZone files={files} setFiles={setFiles} />
         </div>
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-xs text-gray-500">{files.length} files selected</div>
+        {files.length > 0 && (
+          <ul className="mt-4 space-y-1 text-sm">
+            {files.map((f) => (
+              <li key={f.name}>
+                {f.name} — <span>{status[f.name] || 'Ready'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-4 flex justify-end">
           <button
             onClick={onUpload}
             className="rounded-xl bg-black px-4 py-2 text-white disabled:opacity-50"
