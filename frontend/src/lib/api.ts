@@ -11,6 +11,11 @@ export async function deleteCase(caseId: number) {
   return res.data;
 }
 
+export async function renameCase(caseId: number, newName: string) {
+  const res = await api.put(`/api/case/${caseId}`, { new_name: newName });
+  return res.data as { id: number; name: string };
+}
+
 export async function uploadCase(caseName: string, files: File[]) {
   const form = new FormData();
   form.append('case_name', caseName);

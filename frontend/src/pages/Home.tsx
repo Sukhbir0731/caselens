@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileDropZone from '@/components/FileDropZone';
 import { useUploadCase } from '@/hooks/useCase';
-import { listCases, deleteCase, uploadCase } from '@/lib/api';
+import { listCases, deleteCase, uploadCase, renameCase } from '@/lib/api';
 
 export default function Home() {
   const [name, setName] = React.useState('');
@@ -11,6 +11,8 @@ export default function Home() {
   const [cases, setCases] = React.useState<{ id: number; name: string }[]>([]);
   const [selectedCaseId, setSelectedCaseId] = React.useState<number | null>(null);
   const selectedCase = cases.find((c) => c.id === selectedCaseId) || null;
+  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [editName, setEditName] = React.useState('');
 
   const nav = useNavigate();
   const upload = useUploadCase();
@@ -74,26 +76,46 @@ export default function Home() {
         ) : (
           <ul className="space-y-2">
             {cases.map((c) => (
-              <li
-                key={c.id}
-                className={`flex items-center justify-between rounded border p-2 ${
-                  selectedCaseId === c.id ? 'bg-gray-100' : ''
-                }`}
-              >
-                <button
-                  onClick={() => nav(`/case/${c.id}`)}
-                  className="text-blue-600 hover:underline"
-                >
-                  {c.name}
-                </button>
+              <li key={c.id} className="flex items-center justify-between">
+                {editingId === c.id ? (
+                  <input
+                    className="rounded border px-2 py-1"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onBlur={async () => {
+                      if (editName.trim() && editName !== c.name) {
+                        await renameCase(c.id, editName.trim());
+                        setCases((prev) =>
+                          prev.map((x) => (x.id === c.id ? { ...x, name: editName.trim() } : x)),
+                        );
+                      }
+                      setEditingId(null);
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    className="cursor-pointer text-blue-600 hover:underline"
+                    onClick={() => nav(`/case/${c.id}`)}
+                  >
+                    {c.name}
+                  </span>
+                )}
+
                 <div className="space-x-2">
                   <button
-                    onClick={() => setSelectedCaseId(selectedCaseId === c.id ? null : c.id)}
-                    className="text-sm text-gray-700 hover:underline"
+                    className="text-xs text-gray-600 hover:underline"
+                    onClick={() => {
+                      setEditingId(c.id);
+                      setEditName(c.name);
+                    }}
                   >
-                    {selectedCaseId === c.id ? '✓ Selected' : 'Add Docs'}
+                    Rename
                   </button>
-                  <button className="text-red-500 hover:underline" onClick={() => onDelete(c.id)}>
+                  <button
+                    onClick={() => onDelete(c.id)}
+                    className="text-xs text-red-500 hover:underline"
+                  >
                     Delete
                   </button>
                 </div>

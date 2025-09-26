@@ -1,6 +1,6 @@
 import json, shutil, logging
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import SQLModel, Session, create_engine, select
@@ -241,3 +241,15 @@ def delete_case(case_id: int):
         s.commit()
         return {"status": "deleted"}
 
+@app.put("/api/case/{case_id}")
+def rename_case(case_id: int, new_name: str = Body(..., embed=True)):
+    with Session(engine) as s:
+        c = s.get(Case, case_id)
+        if not c:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        c.name = new_name
+        s.add(c)
+        s.commit()
+        s.refresh(c)
+        return {"id": c.id, "name": c.name}
