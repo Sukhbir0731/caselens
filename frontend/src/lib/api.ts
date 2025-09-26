@@ -1,12 +1,14 @@
 import axios from 'axios';
-
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL });
 
-export async function listCases() {
-  const res = await api.get('/');
-  // FastAPI returns HTML for /, so we create a JSON wrapper endpoint below.
-  // We'll call our own JSON endpoints; see notes in README.
-  throw new Error('Use JSON endpoints /cases and /case/:id we add below.');
+export async function listCases(): Promise<{ id: number; name: string }[]> {
+  const res = await api.get('/api/cases');
+  return res.data;
+}
+
+export async function deleteCase(caseId: number) {
+  const res = await api.delete(`/api/case/${caseId}`);
+  return res.data;
 }
 
 export async function uploadCase(caseName: string, files: File[]) {
@@ -75,3 +77,5 @@ export async function getCase(id: number) {
     caseSummaryRaw: 'Case summary goes here.',
   };
 }
+
+export default api;

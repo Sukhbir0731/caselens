@@ -10,7 +10,7 @@ backend/.ruff_cache
 backend/.mypy_cache
 backend/data/uploads
 backend/data/work
-backend/caselens.db
+backend/data/caselens.db
 backend/.env
 
 # OS

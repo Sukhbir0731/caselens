@@ -12,8 +12,8 @@ from .parse import guess_date, guess_doc_type, guess_provider
 from .llm import ollama_chat, build_doc_prompt, build_case_prompt
 from .utils import make_slug
 from .settings import settings
-from .schemas import CaseAPI, CaseMeta, DocOut
-from typing import Iterable
+from .schemas import CaseAPI, CaseMeta, DocOut, CaseListOut
+from typing import Iterable, Optional, List
 
 log = logging.getLogger("caselens")
 
@@ -58,52 +58,50 @@ def health():
 
 @app.post("/upload")
 async def upload(
-    background_tasks: BackgroundTasks,
-    case_name: str = Form(...), 
-    files: list[UploadFile] = File(...)
+    case_name: str = Form(...),
+    files: list[UploadFile] = File(...),
+    case_id: Optional[int] = Form(None),
+    background: BackgroundTasks = None
 ):
     """
     Accept only real PDFs. Skip non-PDFs and any file that fails to open.
     On success, return { case_id } so the frontend can navigate to /case/{id}.
     """
-    case_slug = make_slug(case_name)
     with Session(engine) as s:
-        c = Case(name=case_name)
-        s.add(c)
-        s.commit()
-        s.refresh(c)
-        case_id = c.id
+        if case_id:
+            # load existing case
+            c = s.get(Case, case_id)
+            if not c:
+                raise HTTPException(status_code=404, detail="Case not found")
+        else:
+            # create new case
+            c = Case(name=case_name)
+            s.add(c)
+            s.commit()
+            s.refresh(c)
+            case_id = c.id
 
+        # same dedupe+insert loop as before...
+        case_slug = make_slug(c.name)
         ix = DeDupeIndex()
         case_dir = UPLOADS / f"case_{case_id}_{case_slug}"
         case_dir.mkdir(parents=True, exist_ok=True)
 
         for f in files:
-            # 1) quick filename check
             if not _is_pdf_filename(f.filename or ""):
-                # ignore non-PDF (e.g., .url) without crashing the whole request
                 continue
-
             dest = case_dir / f.filename
-
-            # 2) save first so we can magic-byte check
             with dest.open("wb") as out:
                 shutil.copyfileobj(f.file, out)
-
-            # 3) robust signature check
             if not _looks_like_pdf(dest):
                 dest.unlink(missing_ok=True)
                 continue
-
-            # 4) OCR / text extraction with guard
             try:
                 text = extract_text_from_pdf(str(dest))
             except Exception as e:
-                # corrupt / unreadable file — skip
                 log.warning("Skipping unreadable PDF %s: %s", dest.name, e)
                 continue
 
-            # 5) dedupe + insert
             is_dup, _ = ix.is_duplicate(text)
             if is_dup:
                 continue
@@ -122,8 +120,12 @@ async def upload(
             )
             s.add(d)
         s.commit()
-    background_tasks.add_task(_ensure_ai_cache, case_id)
-    return JSONResponse({"case_id": case_id}, status_code=201, headers={"Location": f"/api/case/{case_id}"})
+
+    # trigger AI in background
+    if background:
+        background.add_task(_ensure_ai_cache, case_id)
+
+    return JSONResponse({"case_id": case_id}, status_code=201)
 
 def _ensure_ai_cache(case_id: int) -> None:
     with Session(engine) as s:
@@ -199,20 +201,14 @@ def api_case(case_id: int):
         caseSummaryRaw=case_summary_raw,
     )
 
-@app.get("/api/cases")
+@app.get("/api/cases", response_model=List[CaseListOut])
 def list_cases():
     with Session(engine) as s:
         cases = s.exec(select(Case)).all()
-
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "created_at": c.created_at.isoformat(),
-            "doc_count": len(c.docs),
-        }
-        for c in cases
-    ]
+        return [
+            CaseListOut(id=c.id, name=c.name, created_at=str(c.created_at))
+            for c in cases
+        ]
 
 @app.get("/export/{case_id}.json")
 def export_json(case_id: int):
@@ -231,3 +227,17 @@ def export_json(case_id: int):
         ],
     }
     return JSONResponse(payload)
+
+@app.delete("/api/case/{case_id}")
+def delete_case(case_id: int):
+    with Session(engine) as s:
+        c = s.get(Case, case_id)
+        if not c:
+            raise HTTPException(status_code=404, detail="Case not found")
+        docs = s.exec(select(Doc).where(Doc.case_id == case_id)).all()
+        for d in docs:
+            s.delete(d)
+        s.delete(c)
+        s.commit()
+        return {"status": "deleted"}
+
