@@ -2,12 +2,6 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { getCaseView } from '@/lib/api';
 import api from '@/lib/api';
 
-type UploadParams = {
-  name: string;
-  files: File[];
-  caseId?: number;
-};
-
 export function useCase(caseId: number) {
   return useQuery({
     queryKey: ['case', caseId],
@@ -16,18 +10,26 @@ export function useCase(caseId: number) {
   });
 }
 
+type UploadParams = {
+  name: string;
+  files: File[];
+  caseId?: number;
+};
+
 export function useUploadCase() {
   return useMutation<number, Error, UploadParams>({
-    mutationFn: async (params: UploadParams) => {
+    mutationFn: async ({ name, files, caseId }: UploadParams) => {
       const form = new FormData();
-      form.append('name', params.name);
-      if (params.caseId) form.append('caseId', params.caseId.toString());
-      params.files.forEach((f: File) => form.append('files', f));
+      form.append('case_name', name);
+      files.forEach((f: File) => form.append('files', f));
+      if (caseId !== undefined) {
+        form.append('case_id', String(caseId));
+      }
 
       const res = await api.post('/upload', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        maxBodyLength: Infinity,
       });
-      return res.data?.id; // case id from backend
+      return res.data?.case_id as number;
     },
   });
 }

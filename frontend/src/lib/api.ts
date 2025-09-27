@@ -16,15 +16,16 @@ export async function renameCase(caseId: number, newName: string) {
   return res.data as { id: number; name: string };
 }
 
-export async function uploadCase(caseName: string, files: File[]) {
+export async function uploadCase(caseName: string, files: File[], caseId?: number) {
   const form = new FormData();
   form.append('case_name', caseName);
   files.forEach((f) => form.append('files', f));
+  if (caseId !== undefined) {
+    form.append('case_id', String(caseId));
+  }
   const res = await api.post('/upload', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
     maxBodyLength: Infinity,
   });
-  // backend responds with { case_id }
   return (res.data?.case_id as number) ?? undefined;
 }
 
