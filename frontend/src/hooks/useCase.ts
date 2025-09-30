@@ -6,6 +6,7 @@ export function useCase(caseId: number) {
   return useQuery({
     queryKey: ['case', caseId],
     queryFn: () => getCaseView(caseId),
+    refetchInterval: 5000,
     staleTime: 1000 * 30,
   });
 }
