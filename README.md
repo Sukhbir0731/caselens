@@ -160,6 +160,10 @@ caselens/
 
 ### Case View
 
+![alt text](image.png)
+![alt text](image-3.png)
+![alt text](image-2.png)
+
 ## 📤 Export
 
 You can export a case summary in JSON format:
@@ -188,3 +192,18 @@ The exported file is structured as:
   ]
 }
 ```
+
+## 🛠️ Development Notes
+
+- Backend uses BackgroundTasks to run LLM calls asynchronously so uploads don’t block.
+- If LLM output is malformed (e.g. missing fields), frontend displays `"-"` in summary tables.
+- You can extend AI guardrails in `ai_post.py` (e.g., validate dates, doc_type).
+- Duplicate PDFs are skipped using a lightweight text hash.
+
+## 👤 Author
+
+CaseLens is developed and maintained by **Sukhbir**
+
+## 📬 Contact
+
+For questions, suggestions, or collaboration opportunities, feel free to reach out at: sukhbir.s3107@gmail.com
