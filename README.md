@@ -4,8 +4,6 @@ CaseLens is a full-stack application for managing legal and medical case documen
 
 It allows professionals to upload PDFs, automatically extracts and summarizes them using AI, and presents a structured case summary with a timeline of events.
 
----
-
 ## ✨ Features
 
 - **Case Management**
@@ -40,8 +38,6 @@ It allows professionals to upload PDFs, automatically extracts and summarizes th
   - PDF text extraction (OCR support)
   - Background tasks for AI calls
   - API endpoints for case CRUD, uploads, and JSON export
-
----
 
 ## 🚀 Getting Started
 
@@ -86,9 +82,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The backend will run at http://127.0.0.1:8000
-
----
+## The backend will run at http://127.0.0.1:8000
 
 ### 3. Frontend Setup
 
@@ -100,4 +94,97 @@ npm run dev
 
 The frontend will run at http://localhost:5173
 
----
+## 📂 Project Structure
+
+```bash
+caselens/
+├── backend/
+│ ├── app/
+│ │ ├── main.py         # FastAPI entrypoint
+│ │ ├── models.py       # SQLModel definitions (Case, Doc)
+│ │ ├── schemas.py      # Pydantic schemas for API responses
+│ │ ├── llm.py          # AI integration with Ollama
+│ │ ├── ocr.py          # PDF text extraction
+│ │ ├── parse.py        # Heuristics for doc_type, provider, date
+│ │ └── utils.py        # Helpers (slugs, hashing, etc.)
+│ ├── data/             # SQLite DB + uploaded docs + work dir
+│ └── requirements.txt  # Python dependencies
+│
+├── frontend/
+│ ├── src/
+│ │ ├── pages/          # React pages (Home, CaseView)
+│ │ ├── components/     # Reusable UI components
+│ │ ├── hooks/          # React Query hooks
+│ │ └── lib/            # API client
+│ └── package.json      # Frontend dependencies
+│
+└── README.md           # Project documentation
+```
+
+## 📡 API Overview
+
+- ### `POST /upload`
+
+  - Upload PDFs for a new or existing case
+  - Params:
+    - `case_name` (str) — required for new case
+    - `case_id` (int) — optional for adding docs to existing case
+    - `files` (list of PDFs)
+  - Response:
+    ```json
+    { "case_id": 1 }
+    ```
+
+- ### `GET /api/case/{case_id}`
+
+  - Get metadata, docs, highlights, and case summary
+
+- ### `GET /api/cases`
+
+  - List all cases (id, name, created_at)
+
+- ### `DELETE /api/case/{case_id}`
+
+  - Delete a case and its associated documents
+
+- ### `PATCH /api/case/{case_id}`
+
+  - Rename a case (frontend sends `{ "name": "New Name" }`)
+
+- ### `GET /export/{case_id}.json`
+  - Export JSON snapshot of case (ready for downstream ingestion)
+
+## 🖼️ Sample Screenshots
+
+### Home Page
+
+### Case View
+
+## 📤 Export
+
+You can export a case summary in JSON format:
+
+```bash
+curl http://127.0.0.1:8000/export/1.json -o case_1.json
+```
+
+The exported file is structured as:
+
+```json
+{
+  "case": {
+    "id": 1,
+    "name": "Demo Case",
+    "created_at": "2025-09-24 01:07:54"
+  },
+  "docs": [
+    {
+      "id": 1,
+      "filename": "clinic_note.pdf",
+      "date": "2023-01-01",
+      "provider": "Dr. John Smith, MD",
+      "doc_type": "progress_note"
+    }
+  ]
+}
+```
